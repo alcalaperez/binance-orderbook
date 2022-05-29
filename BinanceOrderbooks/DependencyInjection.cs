@@ -1,26 +1,41 @@
 ﻿using System.IO;
+using BinanceOrderbooks.Model;
+using BinanceOrderbooks.Services;
+using BinanceOrderbooks.Util;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-public class DependencyInjection
+namespace BinanceOrderbooks
 {
-    public static IHostBuilder CreateHostBuilder(string[] args, string instrument, int size)
+    public class DependencyInjection
     {
-        var hostBuilder = Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((context, builder) =>
+        public static IHostBuilder CreateHostBuilder(string[] args)
+        {
+            var hostBuilder = Host
+                .CreateDefaultBuilder(args)
+                .ConfigureAppConfiguration((context, builder) =>
+                {
+                    builder.AddJsonFile("appsettings.json");
+                    builder.SetBasePath(Directory.GetCurrentDirectory());
+                });
+
+            hostBuilder.ConfigureServices((context, services) =>
             {
-                builder.AddJsonFile("appsettings.json");
-                builder.SetBasePath(Directory.GetCurrentDirectory());
-            })
-            .ConfigureServices((context, services) =>
-            {
-                services.AddSingleton(new CommandLineArgs { Instrument = instrument, Size = size });
-                services.AddSingleton<BinanceWebsocketBackgroundService>();
+                services
+                    .AddLogging()
+                    .AddSingleton(new CommandLineArgs("BTCUSDT", 30))
+                    .AddSingleton<BinanceWebsocketBackgroundService>();
+
                 services.AddHttpClient<IBinanceRestClient, BinanceRestClient>();
-                services.AddSingleton<LiveOrderbook>();
+
+                services
+                    .AddSingleton<LiveOrderbook>()
+                    .AddSingleton<TableConfigurator>();
             });
 
-        return hostBuilder;
+            return hostBuilder;
+        }
     }
 }

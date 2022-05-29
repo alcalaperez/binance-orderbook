@@ -1,9 +1,13 @@
 ﻿
 # Binance Orderbook
 Orderbook implementation for Binance exchange following the information in their [documentation](https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md#how-to-manage-a-local-order-book-correctly).
+Coded in C# as a .Net Core console application.
 
-## What Is an Order Book?
-The order book is a list of the currently open buy and sell orders for an asset, organized by price. The image above is a snapshot of the order book of the BTC/USDT pair on Binance Futures. The orders color-coded in green show buy orders at specific price levels, while the orders in red show sell orders.
+## [What Is an Order Book?](https://academy.binance.com/en/glossary/order-book)
+The order book is a list of the currently open buy and sell orders for an asset, 
+organized by price. The example below is a snapshot of the [order book for BTC/USDT](https://www.binance.com/en/orderbook/btc_usdt)
+pair on Binance Spot. The orders color-coded in green show buy/bid orders at 
+specific price levels, while the orders in red show sell/ask orders.
 
 # Example
 

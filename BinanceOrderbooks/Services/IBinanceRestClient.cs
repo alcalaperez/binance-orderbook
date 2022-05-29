@@ -1,6 +1,11 @@
 ﻿using System.Threading.Tasks;
+using BinanceOrderbooks.Model;
 
-public interface IBinanceRestClient
+namespace BinanceOrderbooks.Services
 {
-    Task<BinanceSnapshotResponse> GetRestSnapshot();
+    public interface IBinanceRestClient
+    {
+        Task<BinanceSnapshotResponse> GetRestSnapshot();
+        Task<BinanceSymbolsResponse> GetSymbols();
+    }
 }

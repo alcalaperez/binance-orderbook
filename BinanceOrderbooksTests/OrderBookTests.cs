@@ -1,18 +1,21 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
+using BinanceOrderbooks;
+using BinanceOrderbooks.Model;
+using BinanceOrderbooks.Services;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace BinanceOrderbooksTests
 {
-    public class OrderBookTest : IClassFixture<ContainerFixture>
+    public class OrderBookTests : IClassFixture<ContainerFixture>
     {
         private readonly LiveOrderbook liveOrderBook; 
         private readonly IBinanceRestClient binanceRestClient;
         private readonly CommandLineArgs args;
 
-        public OrderBookTest(ContainerFixture fixture)
+        public OrderBookTests(ContainerFixture fixture)
         {
             var serviceProvider = fixture.ServiceProvider;
             liveOrderBook = serviceProvider.GetService<LiveOrderbook>();
@@ -26,7 +29,7 @@ namespace BinanceOrderbooksTests
         [InlineData("ETHUSDT")]
         [InlineData("ETCUSDT")]
         [InlineData("BCHUSDT")]
-        public async Task TestRestClient(string instrument)
+        public async Task TestSnapshotRestClient(string instrument)
         {
 
             args.Instrument = instrument;
@@ -52,6 +55,21 @@ namespace BinanceOrderbooksTests
         }
 
         [Fact]
+        public async Task TestSymbolsRestClient()
+        {
+
+            var response = await binanceRestClient.GetSymbols();
+
+            response.Should().NotBeNull();
+            response.Symbols.Should().NotBeNullOrEmpty();
+
+            foreach (var symbol in response.Symbols)
+            {
+                symbol.SymbolName.Should().NotBeNullOrEmpty();
+            }
+        }
+
+        [Fact]
         public void TestLiveOrderbook()
         {
             // Initial state
@@ -62,9 +80,9 @@ namespace BinanceOrderbooksTests
             bids.Should().BeEmpty();
 
             // Add bids
-            liveOrderBook.UpsertPriceLevel("bids", new LiveItem { Price = 200, Volume = 1});
-            liveOrderBook.UpsertPriceLevel("bids", new LiveItem { Price = 100, Volume = 2 });
-            liveOrderBook.UpsertPriceLevel("bids", new LiveItem { Price = 300, Volume = 3 });
+            liveOrderBook.UpsertPriceLevel(OrderBookSide.Bids, new LiveItem { Price = 200, Volume = 1});
+            liveOrderBook.UpsertPriceLevel(OrderBookSide.Bids, new LiveItem { Price = 100, Volume = 2 });
+            liveOrderBook.UpsertPriceLevel(OrderBookSide.Bids, new LiveItem { Price = 300, Volume = 3 });
 
             bids = liveOrderBook.GetBidItems(10);
             bids.Count().Should().Be(3);
@@ -76,9 +94,9 @@ namespace BinanceOrderbooksTests
             bids.Last().Value.Should().Be(2);
 
             // Add asks
-            liveOrderBook.UpsertPriceLevel("asks", new LiveItem { Price = 100, Volume = 1 });
-            liveOrderBook.UpsertPriceLevel("asks", new LiveItem { Price = 200, Volume = 2 });
-            liveOrderBook.UpsertPriceLevel("asks", new LiveItem { Price = 300, Volume = 3 });
+            liveOrderBook.UpsertPriceLevel(OrderBookSide.Asks, new LiveItem { Price = 100, Volume = 1 });
+            liveOrderBook.UpsertPriceLevel(OrderBookSide.Asks, new LiveItem { Price = 200, Volume = 2 });
+            liveOrderBook.UpsertPriceLevel(OrderBookSide.Asks, new LiveItem { Price = 300, Volume = 3 });
 
             asks = liveOrderBook.GetAskItems(10);
             asks.Count().Should().Be(3);
@@ -90,26 +108,26 @@ namespace BinanceOrderbooksTests
             asks.Last().Value.Should().Be(3);
 
             // Update the volume of an existing bid price
-            liveOrderBook.UpsertPriceLevel("bids", new LiveItem { Price = 300, Volume = 10 });
+            liveOrderBook.UpsertPriceLevel(OrderBookSide.Bids, new LiveItem { Price = 300, Volume = 10 });
             bids = liveOrderBook.GetBidItems(10);
             bids.First().Key.Should().Be(300);
             bids.First().Value.Should().Be(10);
 
             // Update the volume of an existing ask price
-            liveOrderBook.UpsertPriceLevel("asks", new LiveItem { Price = 100, Volume = 40 });
+            liveOrderBook.UpsertPriceLevel(OrderBookSide.Asks, new LiveItem { Price = 100, Volume = 40 });
             asks = liveOrderBook.GetAskItems(10);
             asks.First().Key.Should().Be(100);
             asks.First().Value.Should().Be(40);
 
             // Remove the bid level
-            liveOrderBook.RemovePriceLevel("bids",300);
+            liveOrderBook.RemovePriceLevel(OrderBookSide.Bids, 300);
             bids = liveOrderBook.GetBidItems(10);
             bids.Count().Should().Be(2);
             bids.First().Key.Should().Be(200);
             bids.First().Value.Should().Be(1);
 
             // Remove the ask level
-            liveOrderBook.RemovePriceLevel("ask", 100);
+            liveOrderBook.RemovePriceLevel(OrderBookSide.Asks, 100);
             asks = liveOrderBook.GetAskItems(10);
             asks.Count().Should().Be(2);
             asks.First().Key.Should().Be(200);

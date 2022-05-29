@@ -1,5 +1,8 @@
-﻿public record LiveItem
+﻿namespace BinanceOrderbooks.Model
 {
-    public decimal Price { get; set; }
-    public decimal Volume { get; set; }
+    public record LiveItem
+    {
+        public decimal Price { get; set; }
+        public decimal Volume { get; set; }
+    }
 }

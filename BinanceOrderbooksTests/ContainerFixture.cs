@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using BinanceOrderbooks;
+using BinanceOrderbooks.Model;
+using BinanceOrderbooks.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 public class ContainerFixture
 {
