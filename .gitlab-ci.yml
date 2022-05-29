@@ -1,0 +1,27 @@
+﻿image: microsoft/dotnet:5.0
+
+stages:
+  - build
+  - test
+
+variables:
+  project: "NewTypes"
+
+before_script:
+  - "dotnet restore"
+
+build:
+  stage: build
+  variables:
+    build_path: "$project/src/$project"
+  script:
+    - "cd BinanceOrderbooks"
+    - "dotnet build"
+
+test:
+  stage: test
+  variables:
+    test_path: "$project/test/$project.Tests"
+  script:
+    - "cd BinanceOrderbooksTests"
+    - "dotnet test"
