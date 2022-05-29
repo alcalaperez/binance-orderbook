@@ -9,8 +9,10 @@ public class ContainerFixture
     {
         var serviceCollection = new ServiceCollection();
 
+        serviceCollection.AddLogging();
+
         serviceCollection
-            .AddSingleton<CommandLineArgs>();
+            .AddSingleton(new CommandLineArgs("", 10));
 
         serviceCollection
             .AddSingleton<BinanceWebsocketBackgroundService>();
