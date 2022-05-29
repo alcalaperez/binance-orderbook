@@ -2,5 +2,5 @@
 
 public interface IBinanceRestClient
 {
-    Task<BinanceSnapshot> GetRestSnapshot(string instrument);
+    Task<BinanceSnapshotResponse> GetRestSnapshot();
 }

@@ -1,39 +1,93 @@
-﻿using System;
-using System.IO;
+﻿using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Spectre.Console;
 
 class Program
 {
     static async Task Main(string[] args)
     {
-        // Ask for the instument
-        Console.WriteLine("Insert the instrument");
-        var instrument = Console.ReadLine();
+        var instrument = AnsiConsole.Ask<string>("Insert the instrument");
         var size = AnsiConsole.Ask<int>("Enter the size of the orderbook");
 
-        var host = CreateHostBuilder(args, instrument).Build();
+        // Set up injection
+        var host = DependencyInjection.CreateHostBuilder(args, instrument, size).Build();
 
-        Task.Factory.StartNew(() => host.RunAsync());
+        // Run the websocket process in the background
+        var binanceWebsocketBackgroundService = host.Services.GetRequiredService<BinanceWebsocketBackgroundService>();
+        _ = Task.Run(() => binanceWebsocketBackgroundService.Start());
 
+        // Prepare the UI table
         var liveOrderbook = host.Services.GetRequiredService<LiveOrderbook>();
+        var liveTable = SetUpLiveTable(size);
+
+        while (true)
+        {
+            lock (liveOrderbook)
+            {
+                var bids = liveOrderbook.GetBidItems(size);
+                var asks = liveOrderbook.GetAskItems(size);
+                /*int i = 0;
+
+                foreach (var bid in bids)
+                {
+                    liveTable.UpdateCell(i, 0, bid.Value.ToString());
+                    liveTable.UpdateCell(i, 1, bid.Key.ToString());
+                    i++;
+                }
+
+                i = 0;
+
+                foreach (var ask in asks)
+                {
+                    liveTable.UpdateCell(i, 3, ask.Key.ToString());
+                    liveTable.UpdateCell(i, 4, ask.Value.ToString());
+                    i++;
+                }*/
+
+                for (int i = 0; i < size; i++)
+                {
+                    if(bids.Count() -1 < i || asks.Count() - 1 < i)
+                    {
+                        break;
+                    }
+                    lock (bids)
+                    {
+                        lock(asks)
+                        {
+                            var bid = bids.ElementAt(i);
+                            var ask = asks.ElementAt(i);
+                            liveTable.UpdateCell(i, 0, new Markup($"[green]{bid.Value}[/]"));
+                            liveTable.UpdateCell(i, 1, new Markup($"[green]{bid.Key}[/]"));
+                            // Adjust the spread on the top of the orderbook
+                            var topSpread = i == 0 ? (ask.Key - bid.Key).ToString() : "";
+                            liveTable.UpdateCell(i, 2, new Markup($"[bold]{topSpread}[/]"));
+                            liveTable.UpdateCell(i, 3, new Markup($"[red]{ask.Key}[/]"));
+                            liveTable.UpdateCell(i, 4, new Markup($"[red]{ask.Value}[/]"));
+                        }
+                    }                    
+                }
+            }
+            await Task.Delay(1000);
+        }
+    }
+
+    private static Table SetUpLiveTable(int size)
+    {
         var table = new Table().Centered();
-        table.AddColumn("Volume");
-        table.AddColumn("Bids");
-        table.AddColumn("Spread");
-        table.AddColumn("Asks");
-        table.AddColumn("Volume");
+        table.AddColumn(new TableColumn("[green]Volume[/]").Centered());
+        table.AddColumn(new TableColumn("[green]Bids[/]").Centered());
+        table.AddColumn(new TableColumn("[bold]Spread[/]").Centered());
+        table.AddColumn(new TableColumn("[red]Asks[/]").Centered());
+        table.AddColumn(new TableColumn("[red]Volume[/]").Centered());
 
         for (int i = 0; i < size; i++)
         {
-            table.AddRow("Loading", "Loading", "Loading", "Loading", "Loading");
+            table.AddRow("Loading", "Loading", "", "Loading", "Loading");
         }
 
 
-        AnsiConsole.Live(table)
+        _ = AnsiConsole.Live(table)
                     .StartAsync(async ctx =>
                     {
                         while (true)
@@ -42,50 +96,6 @@ class Program
                             await Task.Delay(100);
                         }
                     });
-
-        while (true)
-        {
-            if(liveOrderbook.Asks.Count >= size && liveOrderbook.Bids.Count >= size)
-            {
-                var bids = liveOrderbook.GetBidItems(size);
-                var asks = liveOrderbook.GetAskItems(size);
-
-                for (int i = 0; i < size; i++)
-                {
-                    table.UpdateCell(i, 0, bids[i].Volume.ToString());
-                    table.UpdateCell(i, 1, bids[i].Price.ToString());
-                    // Adjust the spread on the top of the orderbook
-                    if(i == 0)
-                    {
-                        table.UpdateCell(i, 2, (asks[i].Price - bids[i].Price).ToString());
-                    } else
-                    {
-                        table.UpdateCell(i, 2, "");
-                    }
-                    table.UpdateCell(i, 3, asks[i].Price.ToString());
-                    table.UpdateCell(i, 4, asks[i].Volume.ToString());
-                }
-            }
-            
-            await Task.Delay(100);
-        }
-    }
-
-    private static IHostBuilder CreateHostBuilder(string[] args, string instrument)
-    {
-        var hostBuilder = Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((context, builder) =>
-            {
-                builder.SetBasePath(Directory.GetCurrentDirectory());
-            })
-            .ConfigureServices((context, services) =>
-            {
-                services.AddSingleton(new CommandLineArgs { Instrument = instrument });
-                services.AddHostedService<BinanceWebsocketBackgroundService>();
-                services.AddHttpClient<IBinanceRestClient, BinanceRestClient>();
-                services.AddSingleton<LiveOrderbook>();
-            });
-
-        return hostBuilder;
+        return table;
     }
 }
